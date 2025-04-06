@@ -22,14 +22,14 @@ fn main() -> anyhow::Result<()> {
     let query = Query::new(
         &language,
         r#"
-        (declarations (data_type name: (_) @decl_name))
-        (declarations (newtype name: (_) @decl_name))
-        (declarations (type_synomym name: (_) @decl_name))
-        (declarations (class name: (_) @decl_name))
-        (declarations (type_family name: (_) @decl_name))
-        (declarations (function name: (_) @decl_name))
-        (declarations (function (infix operator: (_) @decl_name)))
-        (declarations (bind name: (_) @decl_name))
+        (haskell (declarations (data_type name: (_) @decl_name)))
+        (haskell (declarations (newtype name: (_) @decl_name)))
+        (haskell (declarations (type_synomym name: (_) @decl_name)))
+        (haskell (declarations (class name: (_) @decl_name)))
+        (haskell (declarations (type_family name: (_) @decl_name)))
+        (haskell (declarations (function name: (_) @decl_name)))
+        (haskell (declarations (function (infix operator: (_) @decl_name))))
+        (haskell (declarations (bind name: (_) @decl_name)))
         "#,
     )?;
     let mut query_cursor = QueryCursor::new();
