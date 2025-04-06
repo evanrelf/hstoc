@@ -12,8 +12,8 @@ fn main() -> anyhow::Result<()> {
     let language = tree_sitter_haskell::LANGUAGE.into();
     let mut parser = Parser::new();
     parser.set_language(&language)?;
-    let source_code = if let Some(path) = args.path {
-        fs::read_to_string(&path)?
+    let source_code = if let Some(ref path) = args.path {
+        fs::read_to_string(path)?
     } else {
         io::read_to_string(io::stdin())?
     };
@@ -35,10 +35,16 @@ fn main() -> anyhow::Result<()> {
     let mut query_cursor = QueryCursor::new();
     let mut query_matches = query_cursor.matches(&query, root_node, source_code.as_bytes());
     while let Some(query_match) = query_matches.next() {
-        for query_capture in query_match.captures {
-            let range = query_capture.node.byte_range();
-            let text = source_code.get(range).unwrap();
-            println!("{text}");
+        for match_capture in query_match.captures {
+            let range = match_capture.node.range();
+            let path = match args.path {
+                Some(ref path) => path.display().to_string(),
+                None => String::from("<stdin>"),
+            };
+            let line = range.start_point.row;
+            let column = range.start_point.column;
+            let text = source_code.get(range.start_byte..range.end_byte).unwrap();
+            println!("{path}:{line}:{column}:{text}");
         }
     }
     Ok(())
