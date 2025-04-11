@@ -1,12 +1,28 @@
-#![expect(dead_code)]
-
 use clap::Parser as _;
 use std::{fs, io, path::PathBuf};
-use tree_sitter::{Language, Node, Parser, Query, QueryCursor, StreamingIterator as _, Tree};
+use tree_sitter::{Language, Node, Parser, QueryCursor, StreamingIterator as _, Tree};
 
 #[derive(clap::Parser)]
 struct Args {
     path: Option<PathBuf>,
+    #[arg(long)]
+    query: Query,
+}
+
+#[derive(clap::ValueEnum, Clone)]
+enum Query {
+    Imports,
+    Exports,
+    ExplicitExports,
+    Declarations,
+    DataType,
+    Newtype,
+    TypeSynomym,
+    Class,
+    TypeFamily,
+    Function,
+    FunctionInfix,
+    Bind,
 }
 
 struct Context {
@@ -31,7 +47,21 @@ fn main() -> anyhow::Result<()> {
         source_code,
         tree,
     };
-    for node in query_declarations(&cx)? {
+    let query = match args.query {
+        Query::Imports => query_imports,
+        Query::Exports => query_exports,
+        Query::ExplicitExports => query_explicit_exports,
+        Query::Declarations => query_declarations,
+        Query::DataType => query_data_type,
+        Query::Newtype => query_newtype,
+        Query::TypeSynomym => query_type_synomym,
+        Query::Class => query_class,
+        Query::TypeFamily => query_type_family,
+        Query::Function => query_function,
+        Query::FunctionInfix => query_function_infix,
+        Query::Bind => query_bind,
+    };
+    for node in query(&cx)? {
         let range = node.range();
         let path = match args.path {
             Some(ref path) => path.display().to_string(),
@@ -123,7 +153,7 @@ fn query_bind(cx: &Context) -> anyhow::Result<Vec<Node>> {
 
 fn query<'a>(cx: &'a Context, query: &str) -> anyhow::Result<Vec<Node<'a>>> {
     let root_node = cx.tree.root_node();
-    let query = Query::new(&cx.language, query)?;
+    let query = tree_sitter::Query::new(&cx.language, query)?;
     let mut query_cursor = QueryCursor::new();
     let mut query_matches = query_cursor.matches(&query, root_node, cx.source_code.as_bytes());
     let mut results = Vec::with_capacity(query_matches.size_hint().0);
