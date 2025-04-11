@@ -51,10 +51,10 @@ fn query_imports(cx: &Context) -> anyhow::Result<Vec<Node>> {
 
 fn query_exports(cx: &Context) -> anyhow::Result<Vec<Node>> {
     let explicit = query_explicit_exports(cx)?;
-    if !explicit.is_empty() {
-        Ok(explicit)
-    } else {
+    if explicit.is_empty() {
         query_declarations(cx)
+    } else {
+        Ok(explicit)
     }
 }
 

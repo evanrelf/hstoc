@@ -8,3 +8,6 @@ anyhow = "1.0.97"
 clap = { version = "4.5.35", features = ["derive"] }
 tree-sitter = "0.25.3"
 tree-sitter-haskell = "0.23.1"
+
+[lints]
+clippy.pedantic = { level = "warn", priority = -1 }
