@@ -46,22 +46,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn query_imports(cx: &Context) -> anyhow::Result<Vec<Node>> {
-    let root_node = cx.tree.root_node();
-    let query = Query::new(
-        &cx.language,
-        r#"
-        (haskell (imports (import module: (_) @import)))
-        "#,
-    )?;
-    let mut query_cursor = QueryCursor::new();
-    let mut query_matches = query_cursor.matches(&query, root_node, cx.source_code.as_bytes());
-    let mut results = Vec::with_capacity(query_matches.size_hint().0);
-    while let Some(query_match) = query_matches.next() {
-        for match_capture in query_match.captures {
-            results.push(match_capture.node);
-        }
-    }
-    Ok(results)
+    query(cx, "(haskell (imports (import module: (_) @import)))")
 }
 
 fn query_exports(cx: &Context) -> anyhow::Result<Vec<Node>> {
@@ -74,39 +59,71 @@ fn query_exports(cx: &Context) -> anyhow::Result<Vec<Node>> {
 }
 
 fn query_explicit_exports(cx: &Context) -> anyhow::Result<Vec<Node>> {
-    let root_node = cx.tree.root_node();
-    let query = Query::new(
-        &cx.language,
-        r#"
-        (haskell (header (exports export: (_) @export)))
-        "#,
-    )?;
-    let mut query_cursor = QueryCursor::new();
-    let mut query_matches = query_cursor.matches(&query, root_node, cx.source_code.as_bytes());
-    let mut results = Vec::with_capacity(query_matches.size_hint().0);
-    while let Some(query_match) = query_matches.next() {
-        for match_capture in query_match.captures {
-            results.push(match_capture.node);
-        }
-    }
-    Ok(results)
+    query(cx, "(haskell (header (exports export: (_) @export)))")
 }
 
 fn query_declarations(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    let mut nodes = query_data_type(cx)?;
+    nodes.extend(query_newtype(cx)?);
+    nodes.extend(query_type_synomym(cx)?);
+    nodes.extend(query_class(cx)?);
+    nodes.extend(query_type_family(cx)?);
+    nodes.extend(query_function(cx)?);
+    nodes.extend(query_function_infix(cx)?);
+    nodes.extend(query_bind(cx)?);
+    Ok(nodes)
+}
+
+fn query_data_type(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(
+        cx,
+        "(haskell (declarations (data_type name: (_) @data_type)))",
+    )
+}
+
+fn query_newtype(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(cx, "(haskell (declarations (newtype name: (_) @newtype)))")
+}
+
+fn query_type_synomym(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(
+        cx,
+        "(haskell (declarations (type_synomym name: (_) @type_synomym)))",
+    )
+}
+
+fn query_class(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(cx, "(haskell (declarations (class name: (_) @class)))")
+}
+
+fn query_type_family(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(
+        cx,
+        "(haskell (declarations (type_family name: (_) @type_family)))",
+    )
+}
+
+fn query_function(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(
+        cx,
+        "(haskell (declarations (function name: (_) @function)))",
+    )
+}
+
+fn query_function_infix(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(
+        cx,
+        "(haskell (declarations (function (infix operator: (_) @function))))",
+    )
+}
+
+fn query_bind(cx: &Context) -> anyhow::Result<Vec<Node>> {
+    query(cx, "(haskell (declarations (bind name: (_) @bind)))")
+}
+
+fn query<'a>(cx: &'a Context, query: &str) -> anyhow::Result<Vec<Node<'a>>> {
     let root_node = cx.tree.root_node();
-    let query = Query::new(
-        &cx.language,
-        r#"
-        (haskell (declarations (data_type name: (_) @decl_name)))
-        (haskell (declarations (newtype name: (_) @decl_name)))
-        (haskell (declarations (type_synomym name: (_) @decl_name)))
-        (haskell (declarations (class name: (_) @decl_name)))
-        (haskell (declarations (type_family name: (_) @decl_name)))
-        (haskell (declarations (function name: (_) @decl_name)))
-        (haskell (declarations (function (infix operator: (_) @decl_name))))
-        (haskell (declarations (bind name: (_) @decl_name)))
-        "#,
-    )?;
+    let query = Query::new(&cx.language, query)?;
     let mut query_cursor = QueryCursor::new();
     let mut query_matches = query_cursor.matches(&query, root_node, cx.source_code.as_bytes());
     let mut results = Vec::with_capacity(query_matches.size_hint().0);
