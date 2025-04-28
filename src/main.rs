@@ -17,7 +17,7 @@ enum Query {
     Declarations,
     DataType,
     Newtype,
-    TypeSynomym,
+    TypeSynonym,
     Class,
     TypeFamily,
     Function,
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
         Query::Declarations => query_declarations,
         Query::DataType => query_data_type,
         Query::Newtype => query_newtype,
-        Query::TypeSynomym => query_type_synomym,
+        Query::TypeSynonym => query_type_synonym,
         Query::Class => query_class,
         Query::TypeFamily => query_type_family,
         Query::Function => query_function,
@@ -95,7 +95,7 @@ fn query_explicit_exports(cx: &Context) -> anyhow::Result<Vec<Node>> {
 fn query_declarations(cx: &Context) -> anyhow::Result<Vec<Node>> {
     let mut nodes = query_data_type(cx)?;
     nodes.extend(query_newtype(cx)?);
-    nodes.extend(query_type_synomym(cx)?);
+    nodes.extend(query_type_synonym(cx)?);
     nodes.extend(query_class(cx)?);
     nodes.extend(query_type_family(cx)?);
     nodes.extend(query_function(cx)?);
@@ -115,10 +115,10 @@ fn query_newtype(cx: &Context) -> anyhow::Result<Vec<Node>> {
     query(cx, "(haskell (declarations (newtype name: (_) @newtype)))")
 }
 
-fn query_type_synomym(cx: &Context) -> anyhow::Result<Vec<Node>> {
+fn query_type_synonym(cx: &Context) -> anyhow::Result<Vec<Node>> {
     query(
         cx,
-        "(haskell (declarations (type_synomym name: (_) @type_synomym)))",
+        "(haskell (declarations (type_synomym name: (_) @type_synonym)))",
     )
 }
 
