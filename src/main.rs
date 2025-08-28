@@ -1,12 +1,17 @@
 use clap::Parser as _;
-use std::{fs, io, path::PathBuf};
+use rayon::prelude::*;
+use std::{
+    fs,
+    io::{self, Write as _},
+    path::PathBuf,
+};
 use tree_sitter::{Language, Node, Parser, QueryCursor, StreamingIterator as _, Tree};
 
 #[derive(clap::Parser)]
 struct Args {
-    path: Option<PathBuf>,
     #[arg(long)]
     query: Query,
+    paths: Vec<PathBuf>,
 }
 
 #[derive(clap::ValueEnum, Clone)]
@@ -33,20 +38,6 @@ struct Context {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let language = tree_sitter_haskell::LANGUAGE.into();
-    let mut parser = Parser::new();
-    parser.set_language(&language)?;
-    let source_code = if let Some(ref path) = args.path {
-        fs::read_to_string(path)?
-    } else {
-        io::read_to_string(io::stdin())?
-    };
-    let tree = parser.parse(&source_code, None).unwrap();
-    let cx = Context {
-        language,
-        source_code,
-        tree,
-    };
     let query = match args.query {
         Query::Imports => query_imports,
         Query::Exports => query_exports,
@@ -61,17 +52,29 @@ fn main() -> anyhow::Result<()> {
         Query::FunctionInfix => query_function_infix,
         Query::Bind => query_bind,
     };
-    for node in query(&cx)? {
-        let range = node.range();
-        let path = match args.path {
-            Some(ref path) => path.display().to_string(),
-            None => String::from("<stdin>"),
+    let language = tree_sitter_haskell::LANGUAGE.into();
+    args.paths.par_iter().try_for_each(|path| {
+        let mut parser = Parser::new();
+        parser.set_language(&language)?;
+        let source_code = fs::read_to_string(path)?;
+        let tree = parser.parse(&source_code, None).unwrap();
+        let cx = Context {
+            language: language.clone(),
+            source_code,
+            tree,
         };
-        let line = range.start_point.row;
-        let column = range.start_point.column;
-        let text = node_text(&cx, &node).unwrap();
-        println!("{path}:{line}:{column}:{text}");
-    }
+        let mut stdout = io::stdout();
+        for node in query(&cx)? {
+            let path = path.display();
+            let range = node.range();
+            let line = range.start_point.row;
+            let column = range.start_point.column;
+            let text = node_text(&cx, &node).unwrap();
+            writeln!(&mut stdout, "{path}:{line}:{column}:{text}")?;
+        }
+        stdout.flush()?;
+        anyhow::Ok(())
+    })?;
     Ok(())
 }
 
