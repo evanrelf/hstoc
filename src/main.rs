@@ -11,6 +11,8 @@ use tree_sitter::{Language, Node, Parser, QueryCursor, StreamingIterator as _, T
 struct Args {
     #[arg(long)]
     query: Query,
+    #[arg(long)]
+    stdin_path: Option<PathBuf>,
     paths: Vec<PathBuf>,
 }
 
@@ -53,10 +55,10 @@ fn main() -> anyhow::Result<()> {
         Query::Bind => query_bind,
     };
     let language = tree_sitter_haskell::LANGUAGE.into();
-    args.paths.par_iter().try_for_each(|path| {
+    let process = |path: &str, source_code: &str| {
+        let source_code = source_code.to_string();
         let mut parser = Parser::new();
         parser.set_language(&language)?;
-        let source_code = fs::read_to_string(path)?;
         let tree = parser.parse(&source_code, None).unwrap();
         let cx = Context {
             language: language.clone(),
@@ -65,7 +67,6 @@ fn main() -> anyhow::Result<()> {
         };
         let mut stdout = io::stdout();
         for node in query(&cx)? {
-            let path = path.display();
             let range = node.range();
             let line = range.start_point.row;
             let column = range.start_point.column;
@@ -74,7 +75,18 @@ fn main() -> anyhow::Result<()> {
         }
         stdout.flush()?;
         anyhow::Ok(())
-    })?;
+    };
+    if args.paths.is_empty() {
+        let path = match args.stdin_path {
+            Some(path) => path.display().to_string(),
+            None => String::from("<stdin>"),
+        };
+        process(&path, &io::read_to_string(io::stdin())?)?;
+    } else {
+        args.paths.par_iter().try_for_each(|path| {
+            process(&path.display().to_string(), &fs::read_to_string(path)?)
+        })?;
+    }
     Ok(())
 }
 
